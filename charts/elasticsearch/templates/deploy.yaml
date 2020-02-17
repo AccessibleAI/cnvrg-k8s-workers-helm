@@ -8,17 +8,17 @@ metadata:
     for: elastic
 spec:
   capacity:
-    storage: {{ .Values.elasticsearch.elastic_disk_size }}
+    storage: {{ .Values.elastic_disk_size }}
   accessModes:
   - ReadWriteOnce
   persistentVolumeReclaimPolicy: Retain
   storageClassName: local-storage
   local:
-    path: {{ .Values.elasticsearch.elastic_data_path }}
+    path: {{ .Values.elastic_data_path }}
   claimRef:
      namespace: {{ .Values.global.namespace }}
      name: storage-elastalert-0
-  {{- if .Values.elasticsearch.elastic_node  }}
+  {{- if .Values.elastic_node  }}
   nodeAffinity:
     required:
       nodeSelectorTerms:
@@ -26,7 +26,7 @@ spec:
         - key: kubernetes.io/hostname
           operator: In
           values:
-          - {{ .Values.elasticsearch.elastic_node }}
+          - {{ .Values.elastic_node }}
   {{ end }}
 ---
 apiVersion: apps/v1
@@ -92,5 +92,5 @@ spec:
       accessModes: [ ReadWriteOnce ]
       resources:
         requests:
-          storage: {{ .Values.elasticsearch.elastic_disk_size }}
+          storage: {{ .Values.elastic_disk_size }}
 {{ end }}
