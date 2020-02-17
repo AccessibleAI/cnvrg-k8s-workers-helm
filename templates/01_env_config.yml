@@ -1,0 +1,86 @@
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: env-config
+  namespace: {{ .Values.global.namespace }}
+data:
+  RAILS_ENV: app
+  PASSENGER_APP_ENV: app
+{{ if kindIs "invalid" .Values.global.domain }}
+  APP_DOMAIN: app.{{ .Values.global.ip }}.nip.io
+{{ else }}
+  APP_DOMAIN: app.{{ .Values.global.domain }}
+{{ end }}
+{{ if .Values.global.use_ssl }}
+    {{ if kindIs "invalid" .Values.global.domain }}
+  DEFAULT_URL: https://app.{{ .Values.global.ip }}.nip.io
+  {{ else }}
+  DEFAULT_URL: https://app.{{ .Values.global.domain }}
+  {{ end }}
+{{ else }}
+  {{ if kindIs "invalid" .Values.global.domain }}
+  DEFAULT_URL: http://app.{{ .Values.global.ip }}.nip.io
+  {{ else }}
+  DEFAULT_URL: http://app.{{ .Values.global.domain }}
+  {{ end }}
+{{ end }}
+  KUBE_NAMESPACE: {{ .Values.global.namespace }}
+  RUN_JOBS_ON_SELF_CLUSTER: "true"
+{{ if kindIs "invalid" .Values.imageCredentials }}
+  DOCKER_HUB_USER:
+{{ else }}
+  DOCKER_HUB_USER: {{ .Values.imageCredentials.username }}
+{{ end }}
+{{ if kindIs "invalid" .Values.imageCredentials }}
+  DOCKER_HUB_PASSWORD:
+{{ else }}
+  DOCKER_HUB_PASSWORD: {{ .Values.imageCredentials.password}}
+{{ end }}
+  DEFAULT_COMPUTE_CONFIG: "/opt/kube"
+  DEFAULT_COMPUTE_NAME: default
+  {{ if kindIs "invalid" .Values.global.domain }}
+  DEFAULT_COMPUTE_CLUSTER_DOMAIN: {{ .Values.global.ip }}.nip.io
+  {{ else }}
+  DEFAULT_COMPUTE_CLUSTER_DOMAIN: {{ .Values.global.domain }}
+  {{ end }}
+  {{- if .Values.global.use_https }}
+  DEFAULT_COMPUTE_CLUSTER_HTTPS: "true"
+  {{ else }}
+  DEFAULT_COMPUTE_CLUSTER_HTTPS: "false"
+  {{ end }}
+  CNVRG_STORAGE_TYPE: minio
+  CNVRG_STORAGE_BUCKET: cnvrg-storage
+{{ if .Values.global.use_ssl }}
+  {{ if kindIs "invalid" .Values.global.domain }}
+  CNVRG_STORAGE_ENDPOINT: https://minio.{{ .Values.global.ip }}.nip.io
+  {{ else }}
+  CNVRG_STORAGE_ENDPOINT: https://minio.{{ .Values.global.domain }}
+  {{ end }}
+{{ else }}
+  {{ if kindIs "invalid" .Values.global.domain }}
+  CNVRG_STORAGE_ENDPOINT: http://minio.{{ .Values.global.ip }}.nip.io
+  {{ else }}
+  CNVRG_STORAGE_ENDPOINT: http://minio.{{ .Values.global.domain }}
+  {{ end }}
+{{ end }}
+  USE_STDOUT: "false"
+
+  ELASTICSEARCH_URL: http://elastic
+  REDIS_URL: redis://redis
+  {{- range $key, $val := .Values.app.config }}
+  {{ $key | upper }}: {{ $val | quote }}
+  {{- end }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: {{ .Values.global.namespace }}
+  name: config
+data:
+  config: |
+    address-pools:
+    - name: default
+      protocol: layer2
+      addresses:
+      - {{ printf "%s-%s" .Values.global.ip .Values.global.ip }}

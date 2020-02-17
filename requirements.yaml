@@ -1,0 +1,17 @@
+dependencies:
+- name: istio
+  condition: istio.enabled
+- name: grafana
+  condition: grafana.enabled
+- name: cluster-autoscaler
+  condition: cluster-autoscaler.enabled
+- name: kibana
+  condition: kibana.enabled
+- name: nvidia-device-plugin
+  condition: nvidia-device-plugin.enabled
+- name: cert-manager
+  condition: cert-manager.enabled
+- name: elasticsearch
+  condition: elasticsearch.enabled
+- name: prometheus
+  condition: prometheus.enabled

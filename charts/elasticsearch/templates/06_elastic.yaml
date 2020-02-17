@@ -1,0 +1,110 @@
+{{- if (.Values.enabled) }}
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: storage-elastic-pv
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    for: elastic
+spec:
+  capacity:
+    storage: {{ .Values.elastic_disk_size }}
+  accessModes:
+  - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: local-storage
+  local:
+    path: {{ .Values.elastic_data_path }}
+  claimRef:
+     namespace: {{ .Values.global.namespace }}
+     name: storage-elastic-0
+  {{- if .Values.elastic_node  }}
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - {{ .Values.elastic_node }}
+  {{ end }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: elastic
+  namespace: {{ .Values.global.namespace }}
+spec:
+  serviceName: elastic
+  selector:
+    matchLabels:
+      app: elastic
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: elastic
+    spec:
+      initContainers:
+      - name: init-sysctl
+        image: busybox:1.27.2
+        command:
+        - sysctl
+        - -w
+        - vm.max_map_count=262144
+        securityContext:
+          privileged: true
+      containers:
+      - name: elastic
+        image: docker.elastic.co/elasticsearch/elasticsearch:6.2.4
+        ports:
+        - containerPort: 9200
+        volumeMounts:
+        - name: storage
+          mountPath: /data
+  volumeClaimTemplates:
+  - metadata:
+      name: storage
+    spec:
+      storageClassName: local-storage
+      accessModes: [ ReadWriteOnce ]
+      resources:
+        requests:
+          storage: {{ .Values.elastic_disk_size }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: elastic
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: elastic
+spec:
+  ports:
+  - port: 9200
+  selector:
+    app: elastic
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: elastic-vs
+  namespace: {{ .Values.global.namespace }}
+spec:
+  hosts:
+    {{ if kindIs "invalid" .Values.global.domain }}
+    - {{ printf "elastic.%s.nip.io" .Values.global.ip | quote }}
+    {{ else }}
+    - {{ printf "elastic.%s" .Values.global.domain | quote }}
+    {{ end }}
+  gateways:
+  - cnvrg-gateway
+  http:
+  - timeout: 50s
+    retries:
+      attempts: 4
+      perTryTimeout: 30s
+    route:
+    - destination:
+        host: {{ printf "elastic.%s.svc.cluster.local" .Values.global.namespace }}
+{{ end }}

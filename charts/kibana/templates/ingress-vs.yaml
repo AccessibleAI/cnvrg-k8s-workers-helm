@@ -1,0 +1,18 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: kibana-vs
+  namespace: {{ .Values.global.namespace }}
+spec:
+  hosts:
+  {{ if kindIs "invalid" .Values.global.domain }}
+  - {{ printf "*.kibana.%s.nip.io" .Values.ip | quote }}
+  {{ else }}
+  - {{ printf "kibana.%s" .Values.global.domain | quote }}
+  {{ end }}
+  gateways:
+  - cnvrg-gateway
+  http:
+  - route:
+    - destination:
+        host: {{ printf "kibana.%s.svc.cluster.local" .Values.global.namespace }}

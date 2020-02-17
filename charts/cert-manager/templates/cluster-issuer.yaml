@@ -1,0 +1,68 @@
+{{- if (.Values.enabled) }}
+apiVersion: cert-manager.io/v1alpha2
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: devops@cnvrg.io
+    privateKeySecretRef:
+      name: letsencrypt-prod
+    solvers:
+    - dns01:
+        route53:
+          region: us-east-2
+          {{ if kindIs "invalid" .Values.global.domain_hosted_zone_id }}
+          {{ else }}
+          hostedZoneID: {{ .Values.global.domain_hosted_zone_id }}
+          {{ end }}
+          {{ if kindIs "invalid" .Values.global.domain_access_key }}
+          {{ else }}
+          accessKeyID: {{ .Values.global.domain_access_key }}
+          {{ end }}
+          secretAccessKeySecretRef:
+            name: prod-route53-credentials-secret
+            key: secret-access-key
+---
+apiVersion: v1
+kind: Secret
+type: Opaque
+metadata:
+  name: prod-route53-credentials-secret
+  namespace: {{ .Values.global.namespace }}
+data:
+  {{ if kindIs "invalid" .Values.global.domain_secret_key }}
+  {{ else }}
+  secret-access-key: {{ .Values.global.domain_secret_key | b64enc }}
+  {{ end }}
+
+---
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: domain-ingress-certs
+  namespace: {{ .Values.global.namespace }}
+spec:
+  acme:
+    config:
+    - dns01:
+        provider: aws-dns-prod
+      domains:
+      {{ if kindIs "invalid" .Values.global.domain }}
+      - {{ printf "*.%s.nip.io" .Values.ip | quote }}
+      {{ else}}
+      - {{ printf "*.%s" .Values.global.domain | quote }}
+      {{ end }}
+  dnsNames:
+  {{ if kindIs "invalid" .Values.global.domain }}
+  - {{ printf "*.%s.nip.io" .Values.ip | quote }}
+  {{ else }}
+  - {{ printf "*.%s" .Values.global.domain | quote }}
+  {{ end }}
+  issuerRef:
+    kind: ClusterIssuer
+    name: letsencrypt-prod
+  renewBefore: 72h
+  secretName: istio-ingressgateway-certs
+{{ end }}

@@ -1,0 +1,96 @@
+{{- if (.Values.enabled) }}
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: storage-elastalerts-pv
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    for: elastic
+spec:
+  capacity:
+    storage: {{ .Values.elasticsearch.elastic_disk_size }}
+  accessModes:
+  - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: local-storage
+  local:
+    path: {{ .Values.elasticsearch.elastic_data_path }}
+  claimRef:
+     namespace: {{ .Values.global.namespace }}
+     name: storage-elastalert-0
+  {{- if .Values.elasticsearch.elastic_node  }}
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - {{ .Values.elasticsearch.elastic_node }}
+  {{ end }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: elastalert
+  name: elastalert
+  namespace: {{ .Values.global.namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: elastalert
+  serviceName: elastalert
+  template:
+    metadata:
+      labels:
+        app: elastalert
+    spec:
+      initContainers:
+      - name: data-permission-fix
+        image: busybox
+        command: ["/bin/chown","-R","1000:1000", "/opt/elastalert/rules"]
+        volumeMounts:
+        - name: storage
+          mountPath: /opt/elastalert/rules
+      containers:
+      - image: bitsensor/elastalert:3.0.0-beta.1
+        imagePullPolicy: IfNotPresent
+        name: elastalert
+        ports:
+        - containerPort: 3030
+          protocol: TCP
+        resources:
+          limits:
+            cpu: "2"
+            memory: 4Gi
+          requests:
+            cpu: 100m
+            memory: 50000m
+        volumeMounts:
+        - mountPath: /opt/elastalert-server/config/config.json
+          subPath: config.json
+          name: elastalert-config
+        - mountPath: /opt/elastalert/config.yaml
+          subPath: config.yaml
+          name: elastalert-config
+        - mountPath: /opt/elastalert/rules
+          name: storage
+      restartPolicy: Always
+      serviceAccount: cnvrg
+      serviceAccountName: cnvrg
+      volumes:
+      - configMap:
+          name: elastalert-config
+        name: elastalert-config
+  volumeClaimTemplates:
+  - metadata:
+      name: storage
+    spec:
+      storageClassName: local-storage
+      accessModes: [ ReadWriteOnce ]
+      resources:
+        requests:
+          storage: {{ .Values.elasticsearch.elastic_disk_size }}
+{{ end }}
