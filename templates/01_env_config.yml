@@ -27,16 +27,6 @@ data:
 {{ end }}
   KUBE_NAMESPACE: {{ .Values.global.namespace }}
   RUN_JOBS_ON_SELF_CLUSTER: "true"
-{{ if kindIs "invalid" .Values.imageCredentials }}
-  DOCKER_HUB_USER:
-{{ else }}
-  DOCKER_HUB_USER: {{ .Values.imageCredentials.username }}
-{{ end }}
-{{ if kindIs "invalid" .Values.imageCredentials }}
-  DOCKER_HUB_PASSWORD:
-{{ else }}
-  DOCKER_HUB_PASSWORD: {{ .Values.imageCredentials.password}}
-{{ end }}
   DEFAULT_COMPUTE_CONFIG: "/opt/kube"
   DEFAULT_COMPUTE_NAME: default
   {{ if kindIs "invalid" .Values.global.domain }}
@@ -68,9 +58,6 @@ data:
 
   ELASTICSEARCH_URL: http://elastic
   REDIS_URL: redis://redis
-  {{- range $key, $val := .Values.app.config }}
-  {{ $key | upper }}: {{ $val | quote }}
-  {{- end }}
 ---
 apiVersion: v1
 kind: ConfigMap
