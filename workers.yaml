@@ -4,3 +4,8 @@ global:
   namespace: cnvrg
   ip: 192.168.204.130 # Range of IP-Address for the load balancer
   domain: 192.168.204.130.nip.io # # use cnvrg to create a cnvrg's domain in the format myname.cnvrg.io
+elasticsearch:
+  enabled: true #default
+  elastic_disk_size: 100Gi
+  elastic_data_path: /mnt/data # path of postgres data
+  elastic_node: my-node # node name
