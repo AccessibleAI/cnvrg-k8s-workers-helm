@@ -4,6 +4,8 @@ kind: VirtualService
 metadata:
   name: elastalert-vs
   namespace: {{ .Values.global.namespace }}
+  annotations:
+    "helm.sh/hook": "pre-install"
 spec:
   gateways:
   - cnvrg-gateway

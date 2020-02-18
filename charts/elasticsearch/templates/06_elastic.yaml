@@ -90,6 +90,8 @@ kind: VirtualService
 metadata:
   name: elastic-vs
   namespace: {{ .Values.global.namespace }}
+  annotations:
+    "helm.sh/hook": "pre-install"
 spec:
   hosts:
     {{ if kindIs "invalid" .Values.global.domain }}
